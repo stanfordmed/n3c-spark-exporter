@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
 
-import asyncio
-import sys, getopt
+import sys
 from google.cloud import storage
 import argparse
 import os
 from pathlib import Path
 import yaml
-import time
-import time
-import csv
 
 spark_bq_jar = 'gs://spark-lib/bigquery/spark-bigquery-with-dependencies_2.12-0.27.1.jar'
 gs_bucket_config = 'gcs_bucket'
