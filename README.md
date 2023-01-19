@@ -32,7 +32,7 @@ To run this extractor -
 3. Run command -
    python3 spark_extractor.py  --config config.yaml
 
-Notes - Do not change following configuration values in config.yml
+DO NOT CHANGE following configuration values in config.yml
     script_file:
     manifest:
     data_count_sql:

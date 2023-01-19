@@ -17,9 +17,6 @@ persist_database_schema: gcp-project-id.subset-dataset-name
 # pyspark configurations
 wait_for_job_completion_in_min: 120
 
-# configuration for pyspark batch to use, if you rename your configuration to something like config-dev.yaml, make sure you change it here
-extract_config_file: config.yaml
-
 # channge the values for your environment
 site_abbrev: STARR_OMOP
 site_name: site-name

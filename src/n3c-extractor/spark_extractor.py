@@ -122,6 +122,7 @@ class SparkSqlBatch:
     print('Done extraction data_counts/header file')
 
 class PysparkBatchRunner:
+  config_file : str
   config : any
   gcs_bucket : str
   prefix : str
@@ -130,6 +131,7 @@ class PysparkBatchRunner:
   def __init__(self, config_file):
     from google.cloud import dataproc_v1
     with open(config_file, "r") as f:
+      self.config_file = config_file
       self.config = yaml.safe_load(f)
       self.gcs_bucket = self.config[gs_bucket_config]
       self.prefix = self.config[prefix_config]
@@ -143,13 +145,13 @@ class PysparkBatchRunner:
         print(f'Copying {script} file to gs://{self.gcs_bucket}/{self.script_file}')
         blob.upload_from_filename(script, "text")
             
-        extract_config_file = self.config['extract_config_file']
+        extract_config_file = self.config_file
         if self.prefix != None:
-          extract_config_file = f'{self.prefix}/{extract_config_file}'
+          extract_config_file = f'{self.prefix}/{self.config_file}'
         
         config_blob = bucket.blob(extract_config_file)
         print(f'Copying config file to gs://{self.gcs_bucket}/{extract_config_file}')
-        config_blob.upload_from_filename(self.config['extract_config_file'], "text")
+        config_blob.upload_from_filename(self.config_file, "text")
             
   def extract(self):
     cdm_tables = self.config[cdm_tables_config]
@@ -185,9 +187,9 @@ class PysparkBatchRunner:
     subnetwork_uri = self.config['subnetwork_uri']
     batch_script = f'gs://{self.gcs_bucket}/{self.script_file}'
 
-    extract_config_file = self.config['extract_config_file']
+    extract_config_file = self.config_file
     if self.prefix != None:
-      extract_config_file = f'{self.prefix}/{extract_config_file}'
+      extract_config_file = f'{self.prefix}/{self.config_file}'
 
     client = dataproc_v1.BatchControllerClient( client_options={"api_endpoint": "{}-dataproc.googleapis.com:443".format(location)})
         
@@ -198,7 +200,7 @@ class PysparkBatchRunner:
     batch.pyspark_batch.file_uris = [f'gs://{self.gcs_bucket}/{extract_config_file}']
 
     # Pass all the arguments you want to use in the spark job
-    batch.pyspark_batch.args = ["--extract", self.config['extract_config_file']]
+    batch.pyspark_batch.args = ["--extract", self.config_file]
     environmentConfig = dataproc_v1.EnvironmentConfig()
     executionConfig = dataproc_v1.ExecutionConfig()
     executionConfig.service_account = service_account
