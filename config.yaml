@@ -26,13 +26,13 @@ script_file: spark_extractor.py
 
 # channge the values for your environment
 site_abbrev: STARR_OMOP
-site_name: STANFORD UNIVERSITY
-contact_name: Priya Desai
-contact_email: prd@stanford.edu
+site_name: site-name
+contact_name: firstname lastname
+contact_email: email
 # cdm name (pcornet, omop, act)
 cdm_name: omop
 cdm_version: 5.3.1
-vocabulary_version: v5.0 2023-01-04
+vocabulary_version: v5.0 2022-06-09
 # set below to Y or N
 n3c_phenotype_yn: Y
 data_latency_num_days: 14 
