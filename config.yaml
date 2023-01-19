@@ -1,6 +1,6 @@
 # gcp configurations
 project_id:  gcp-project-id
-service_account:  iam-account-email-id-with-domain-name
+service_account:  Service account email
 region:  gcp-region
 subnetwork_uri: projects/gcp-project-id/regions/gcp-region/subnetworks/gcp-subnetwork
 gcs_bucket: gcp-bucket
@@ -17,12 +17,8 @@ persist_database_schema: gcp-project-id.subset-dataset-name
 # pyspark configurations
 wait_for_job_completion_in_min: 120
 
-# configuration for pyspark batch to use
+# configuration for pyspark batch to use, if you rename your configuration to something like config-dev.yaml, make sure you change it here
 extract_config_file: config.yaml
-
-#----- The configuration below can be moved to another file if desired, provided the new file name is specified as value of 'extract_config_file' above
-
-script_file: spark_extractor.py
 
 # channge the values for your environment
 site_abbrev: STARR_OMOP
@@ -43,6 +39,8 @@ shift_date_yn: N
 max_num_shift_days: NA
 
 # DO NOT CHANGE ANYTHING AFTER THIS POINT IN CONFIG FILE
+script_file: spark_extractor.py
+
 manifest: |
   select
    '{site_abbrev}' as site_abbrev,
