@@ -150,14 +150,14 @@ package-data = {"sample" = ["*.dat"]}
 [build-system]
 # These are the assumed default build requirements from pip:
 # https://pip.pypa.io/en/stable/reference/pip/#pep-517-and-518-support
-requires = ["setuptools>=43.0.0", "wheel"]
+requires = ["setuptools>=43.0.0", "wheel", "google-cloud-dataproc", "pyyaml", "gcsfs"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "spark_extractor"
+name = "n3c_spark_extractor"
 version = "1.0.0"
 authors = []
-description = "Extracts N3C cdm tables to csv using pyspark. As it uses sparksql, the extraction of hug tables gets done in few minutes"
+description = "Extracts N3C cdm tables to csv using pyspark."
 readme = "README.md"
 requires-python = ">=3.9.9"
 classifiers = [
