@@ -36,7 +36,7 @@ shift_date_yn: N
 max_num_shift_days: NA
 
 # DO NOT CHANGE ANYTHING AFTER THIS POINT IN CONFIG FILE
-script_file: spark_extractor.py
+script_file: spark_sql_batch.py
 
 manifest: |
   select
