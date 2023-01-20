@@ -6,7 +6,9 @@ import os
 from pathlib import Path
 import yaml
 import csv
-
+#
+# This script should run on cloud
+#
 spark_bq_jar = 'gs://spark-lib/bigquery/spark-bigquery-with-dependencies_2.12-0.27.1.jar'
 gs_bucket_config = 'gcs_bucket'
 prefix_config = 'prefix'
@@ -43,9 +45,8 @@ class spark_sql_batch:
       cdm_tables = self.config[cdm_tables_config].strip()
       cdm_table_list = cdm_tables.split(",")
       for table in cdm_table_list:
-        if table in self.config:
-          cdm_table_name = table.strip()          
-          self.run_spark_sql(dataset_id, cdm_table_name)
+        if table in self.config:       
+          self.run_spark_sql(dataset_id, table.strip())
         
   def run_spark_sql(self, dataset_id, cdm_table_name):
     print(f'Starting extraction of {cdm_table_name}')
@@ -70,7 +71,7 @@ class spark_sql_batch:
       columns.append('"' + field.name + '"')
     blob.upload_from_string('|'.join(columns) + '\n')
 
-    # execute row_count query and dump the results to a csv file in data_counts folder
+    # execute row_count query and dump the results to a csv file in data_counts folder 
     rc_foler = data_counts_folder
     if self.prefix != None:
       rc_foler = f'{self.prefix}/{rc_foler}'
@@ -133,7 +134,6 @@ def main():
       runner = spark_sql_batch(extract_fname)
       print("Done running spark_extractor SparkSqlBatch")
       return
-
 
 if __name__ == '__main__':
     sys.exit(main())

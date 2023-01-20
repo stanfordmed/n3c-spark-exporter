@@ -7,6 +7,12 @@ import os
 from pathlib import Path
 import yaml
 from google.cloud import dataproc_v1
+#
+# This class should be initialized with a config.yaml file similar to config_example.yaml
+# The trigger_batch method triggers pyspark batch to run on cloud and after a successful run of the batch, it consolidates the csv parts
+#
+# TODO - serialize the config file into a bean
+#
 
 spark_bq_jar = 'gs://spark-lib/bigquery/spark-bigquery-with-dependencies_2.12-0.27.1.jar'
 gs_bucket_config = 'gcs_bucket'
@@ -21,6 +27,7 @@ class n3c_spark_extractor:
   gcs_bucket : str
   prefix : str
   script_file : str
+  blobs_to_delete : list
 
   def __init__(self, config_file):
     with open(config_file, "r") as f:
@@ -28,36 +35,42 @@ class n3c_spark_extractor:
       self.config = yaml.safe_load(f)
       self.gcs_bucket = self.config[gs_bucket_config]
       self.prefix = self.config[prefix_config]
-      script = self.config['script_file']
-      self.script_file = 'scripts/spark_sql_batch.py'
+
+      # copy the pyspark batch script to gcs
+      script = 'spark_sql_batch.py'
+      self.script_file = f'scripts/{script}'
       if self.prefix != None:
-        self.script_file = f'{self.prefix}/scripts/spark_sql_batch.py'
+        self.script_file = f'{self.prefix}/{self.script_file}'
         storage_client = storage.Client()
         bucket = storage_client.get_bucket(self.gcs_bucket)
         blob = bucket.blob(self.script_file)
         print(f'Copying {script} file to gs://{self.gcs_bucket}/{self.script_file}')
-        blob.upload_from_filename(f'src/n3c_spark_extractor/{script}', "text")
-            
+        blob.upload_from_filename(f'src/n3c_spark_extractor/{script}')
+        self.blobs_to_delete = []
+        self.blobs_to_delete.append(blob)
+
+        # copy the config file to gcs  
         extract_config_file = self.config_file
         if self.prefix != None:
           extract_config_file = f'{self.prefix}/{self.config_file}'
         
         config_blob = bucket.blob(extract_config_file)
         print(f'Copying config file to gs://{self.gcs_bucket}/{extract_config_file}')
-        config_blob.upload_from_filename(self.config_file, "text")
+        config_blob.upload_from_filename(self.config_file)
+        self.blobs_to_delete.append(config_blob)
             
   def extract(self):
+    
+    # trigger pyspark batch process
+    result = self.trigger_batch()
+
     cdm_tables = self.config[cdm_tables_config]
     cdm_table_list : list = cdm_tables.split(",")
     print(f'Processing {cdm_table_list}')
 
-    # trigger pyspark batch process
-    result = self.trigger_batch()
-
     # compose csvs for each table
     for table in cdm_table_list:
-      cdm_table = table.strip()
-      self.compose_csvs(cdm_table)
+      self.compose_csvs(table.strip())
     self.compose_csvs('data_counts')
 
     cdm_table_list.append(mainfest)
@@ -68,8 +81,14 @@ class n3c_spark_extractor:
     self.delete_csvs(data_counts_folder)
     self.delete_csvs(mainfest)
     for table in cdm_table_list:
-      cdm_table = table.strip()
-      self.delete_csvs(cdm_table)
+      self.delete_csvs(table.strip())
+    # cleanup files we saved to bucket
+    for blob in self.blobs_to_delete:
+      print(f'Deleting {blob.name}')
+      try:
+        blob.delete()
+      except Exception as e:
+        print(f'Error while deleting {blob.name}')
         
   def trigger_batch(self):
     from google.cloud import dataproc_v1
@@ -109,7 +128,7 @@ class n3c_spark_extractor:
     # Make a request to create a batch
     operation = client.create_batch(request=request)
     print('Waiting for operation to complete, this may take a while...')
-    wait : int = self.config['wait_for_job_completion_in_min'] * 60 
+    wait : int = self.config['timeout_in_min'] * 60
     result = operation.result(timeout=wait)
     print(result)
     
@@ -125,7 +144,10 @@ class n3c_spark_extractor:
             cdm_table_name in blob.name or \
               cdm_table_name_upper in blob.name): 
           print(f'Deleting {blob.name}')
-          blob.delete()
+          try:
+            blob.delete()
+          except Exception as e:
+            print(f'Error while deleting {blob.name}')
       
   def compose_csvs(self, cdm_table_name) :
     print(f'Composing csv parts for {cdm_table_name}')
@@ -153,8 +175,8 @@ class n3c_spark_extractor:
         
     for segment in segments:
       print ('Adding file - ' + segment.name)
-      cdm_table_upper = cdm_table_name.upper()
-      destination = bucket.blob(f'{self.prefix}/{cdm_table_upper}.csv')
+    cdm_table_upper = cdm_table_name.upper()
+    destination = bucket.blob(f'{self.prefix}/{cdm_table_upper}.csv')
 
     # compose allows cmposing 32 files in one go
     if len(segments) <= 32:

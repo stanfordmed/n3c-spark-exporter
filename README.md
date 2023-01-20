@@ -1,7 +1,5 @@
 # N3C spark extractor
 
-![Python Logo](https://www.python.org/static/community_logos/python-logo.png "Sample inline image")
-
 Background - The n3c extractor script https://github.com/National-COVID-Cohort-Collaborative/Phenotype_Data_Acquisition 
 can successfully export smaller cdm tables into CSVs. However when the table sizes grow out of order 
 e.g. measurement table having more than 2.5 billion rows can result into timing out the bigquery 
@@ -17,7 +15,7 @@ Other references - https://github.com/National-COVID-Cohort-Collaborative/Phenot
 
 To run this extractor -
 
-1. Please run https://github.com/National-COVID-Cohort-Collaborative/Phenotype_Data_Acquisition/blob/master/Exporters/PythonExporter_bigquery/db_exp.py with command - 
+1. Run https://github.com/National-COVID-Cohort-Collaborative/Phenotype_Data_Acquisition/blob/master/Exporters/PythonExporter_bigquery/db_exp.py with command - 
     nohup python3 db_exp.py --debug --storedata --nocsv --database bigquery --config config.ini --output_dir <output-dir> --phenotype /<path-to-n3c-scripts>/Phenotype_Data_Acquisition/PhenotypeScripts/N3C_phenotype_omop_bigquery.sql --extract /<path-to-n3c-scripts>/Phenotype_Data_Acquisition/ExtractScripts/N3C_extract_omop_bigquery.sql | tee <output_log>
     --storedata option will store the tables in subset dataset
     --nocsv option ensures the cdm_table contents do not get extracted to csvs
@@ -32,6 +30,8 @@ To run this extractor -
 3. Run command -
    python3 <TBD>
 
+NOTE - The pyspark batch takes 15-20 minutues to complete and the timeout_in_min is set to 60 mins. In future if it takes more than 60 minutes, 
+    config timeout_in_min can be set to a higher value. 
 DO NOT CHANGE following configuration values in config.yml
     script_file:
     manifest:
