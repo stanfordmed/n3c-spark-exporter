@@ -1,21 +1,22 @@
 import argparse
-from .n3c_spark_extractor import *
+from .n3c_spark_extractor import n3c_spark_extractor
+import pkg_resources
 
 def main(args=None):
   parser = argparse.ArgumentParser(description="Utitilty to extract tables from n3c subset in to csvs")
-  parser.add_argument('--config', required=False, help='specify the name of the configuration yaml file to be used to trigger a spark batch, see file config_example.yaml')
+  parser.add_argument('--config', required=True, help='specify the name of the configuration yaml file to be used to trigger a spark batch, see file config_example.yaml')
     
   args = parser.parse_args()
-  if args.config is not None:
-    print("Running n3c_spark_extractor")
-    config_fname = args.config
-    runner = n3c_spark_extractor(config_fname)
-    runner.extract()
-    print("Done running n3c_spark_extractor")
-    return
-  else :
-    print("Supports only config command, please run following command -")
-    print("e.g. --config config_ini.yaml")
-
+  print("Running n3c_spark_extractor")
+  config_fname = args.config
+  runner = n3c_spark_extractor(config_fname, 
+      pkg_resources.resource_filename('n3c_spark_extractor', 'spark_sql_batch.py'), 
+      pkg_resources.resource_filename('n3c_spark_extractor', 'config/batch_config.yaml'))
+  # runner = n3c_spark_extractor(config_fname, 
+  #   'src/n3c_spark_extractor/spark_sql_batch.py', 
+  #   'src/n3c_spark_extractor/config/batch_config.yaml')
+  runner.extract()
+  print("Done running n3c_spark_extractor")
+  
 if __name__ == '__main__':
   main()

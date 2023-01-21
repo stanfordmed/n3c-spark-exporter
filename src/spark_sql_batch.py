@@ -20,42 +20,39 @@ mainfest = 'manifest'
 
 class spark_sql_batch:
   spark : any
-  batch_config : any
-  env_config : any
+  config : any
   gcs_bucket : str
   prefix : str
   script_file : str
   data_count_str : str
 
-  def __init__(self, batch_config_file, env_config_file):
+  def __init__(self, config_file):
     from pyspark.sql import SparkSession
-    with open(batch_config_file, "r") as f: 
+    with open(config_file, "r") as f:      
       # create spark session and set the temp bucket
       self.spark = SparkSession.builder.appName('N3C_extract_runner').config('spark.jars', spark_bq_jar).getOrCreate()
-      self.batch_config = yaml.safe_load(f)
+      self.config = yaml.safe_load(f)
+      self.gcs_bucket = self.config[gs_bucket_config]
+      self.spark.conf.set('temporaryGcsBucket', self.gcs_bucket)
+      self.prefix = self.config[prefix_config]
 
-      with open(env_config_file, "r") as ef: 
-        self.env_config = yaml.safe_load(ef)
-        self.gcs_bucket = self.env_config[gs_bucket_config]
-        self.spark.conf.set('temporaryGcsBucket', self.gcs_bucket)
-        self.prefix = self.env_config[prefix_config]
+      # create MANIFEST.csv and parts for DATA_COUNTS.csv
+      self.run_spark_sql_manifest()
+      self.create_data_count_header()
 
-        # create MANIFEST.csv and parts for DATA_COUNTS.csv
-        self.run_spark_sql_manifest()
-        self.create_data_count_header()
-
-        # extract cdm_tables from subset(persist_database_schema) dataset as csv part files
-        dataset_id = self.env_config['persist_database_schema']
-        cdm_tables = self.batch_config[cdm_tables_config].strip()
-        cdm_table_list = cdm_tables.split(",")
-        for table in cdm_table_list:
-          if table in self.batch_config:       
-            self.run_spark_sql(dataset_id, table.strip())
+      # extract cdm_tables from subset(persist_database_schema) dataset as csv part files
+      dataset_id = self.config['persist_database_schema']
+      cdm_tables = self.config[cdm_tables_config].strip()
+      cdm_table_list = cdm_tables.split(",")
+      for table in cdm_table_list:
+        if table in self.config:       
+          self.run_spark_sql(dataset_id, table.strip())
         
   def run_spark_sql(self, dataset_id, cdm_table_name):
     print(f'Starting extraction of {cdm_table_name}')
+
     # execute the query and dump the csv parts for the cdm_table to gcs bucket
-    sql = self.batch_config[cdm_table_name]
+    sql = self.config[cdm_table_name]
     cdm_table = self.spark.read.format('bigquery').option('table', f'{dataset_id}.{cdm_table_name}').load()
     cdm_table.createOrReplaceTempView(cdm_table_name) 
     df = self.spark.sql(sql)
@@ -79,24 +76,26 @@ class spark_sql_batch:
     if self.prefix != None:
       rc_foler = f'{self.prefix}/{rc_foler}'
     table_name_upper = cdm_table_name.upper()
-    rc_sql = self.batch_config['data_count_sql'].format(table_name_upper = table_name_upper, table_name = cdm_table_name)
+    rc_sql = self.config['data_count_sql'].format(table_name_upper = table_name_upper, table_name = cdm_table_name)
     rc_df = self.spark.sql(rc_sql)
-    rc_df.toPandas().to_csv(f'gs://{self.gcs_bucket}/{rc_foler}/{table_name_upper}.csv', header = False, index = False, sep='|', quotechar='"', quoting=csv.QUOTE_ALL)
+    rc_df.toPandas().to_csv(f'gs://{self.gcs_bucket}/{rc_foler}/{table_name_upper}.csv', header = False, index = False, sep='|', quotechar='"', quoting=csv.QUOTE_ALL)    
+
     print(f'Done extraction {cdm_table_name}')
 
   def run_spark_sql_manifest(self):
     print(f'Extracting MINFEST.csv file')
-    dataset_id = self.env_config['results_database_schema']
-    sql = self.batch_config[mainfest].format(site_abbrev = self.env_config['site_abbrev'],
-      site_name = self.env_config['site_name'],
-      contact_name = self.env_config['contact_name'],
-      contact_email = self.env_config['contact_email'],
-      cdm_name = self.env_config['cdm_name'],
-      cdm_version = self.env_config['cdm_version'],
-      shift_date_yn = self.env_config['shift_date_yn'],
-      max_num_shift_days = self.env_config['max_num_shift_days'],
-      data_latency_num_days = self.env_config['data_latency_num_days'],
-      days_between_submissions = self.env_config['days_between_submissions'])
+
+    dataset_id = self.config['results_database_schema']
+    sql = self.config[mainfest].format(site_abbrev = self.config['site_abbrev'],
+      site_name = self.config['site_name'],
+      contact_name = self.config['contact_name'],
+      contact_email = self.config['contact_email'],
+      cdm_name = self.config['cdm_name'],
+      cdm_version = self.config['cdm_version'],
+      shift_date_yn = self.config['shift_date_yn'],
+      max_num_shift_days = self.config['max_num_shift_days'],
+      data_latency_num_days = self.config['data_latency_num_days'],
+      days_between_submissions = self.config['days_between_submissions'])
 
     n3c_pre_cohort = self.spark.read.format('bigquery') \
       .option('table', f'{dataset_id}.n3c_pre_cohort') \
@@ -107,10 +106,12 @@ class spark_sql_batch:
     if self.prefix != None:
       manifest_prefix = f'{self.prefix}/{manifest_prefix}'
     df.toPandas().to_csv(f'gs://{self.gcs_bucket}/{manifest_prefix}', index=False, sep='|', quotechar='"', quoting=csv.QUOTE_ALL, date_format='%Y-%m-%d %H:%M:%S')    
+    
     print(f'Done creating MANIFEST.csv')
 
   def create_data_count_header(self) :
     print('Extracting data_counts/header file')
+
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(self.gcs_bucket)
     csv_folder = 'data_counts'
@@ -118,18 +119,21 @@ class spark_sql_batch:
       csv_folder = f'{self.prefix}/data_counts'
     blob = bucket.blob(f'{csv_folder}/header.csv')
     blob.upload_from_string('"table_name"|"row_count"\n')
+
     print('Done extraction data_counts/header file')
 
 def main():
     parser = argparse.ArgumentParser(description="Utitilty to extract tables from n3c subset in to csvs")
-    parser.add_argument('--batch_config', required=True, help='name of the configuration yaml file for extracting cdm tables')
-    parser.add_argument('--env_config', required=True, help='name of the config ini file with environment properties')
+    parser.add_argument('--extract', required=False, help='specify the name of the configuration ini file for extracting cdm tables, see file spark_ini_example.txt')
     args = parser.parse_args()
 
     # this part runs on cloud
-    print("Running spark_extractor spark_sql_batch")
-    runner = spark_sql_batch(args.batch_config, args.env_config)
-    print("Done running spark_extractor spark_sql_batch")
+    if args.extract is not None:
+      print("Running spark_extractor SparkSqlBatch")
+      extract_fname = args.extract
+      runner = spark_sql_batch(extract_fname)
+      print("Done running spark_extractor SparkSqlBatch")
+      return
 
 if __name__ == '__main__':
     sys.exit(main())

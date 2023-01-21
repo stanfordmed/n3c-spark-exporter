@@ -27,28 +27,16 @@ To run this extractor -
     gcs_bucket: gcp bucket
     prefix: extractor where the temporary files, confiiguration files etc go and the spark batch can get the files from
     output_dir: local folder where the extractor can download CSV files to 
-3. Run command -
-   python3 <TBD>
+3. Clone the repository -
+    https://github.com/stanfordmed/n3c-spark-exporter
+4. Build the module - 
+    python -m build
+5. Install the package -
+    pip install dist/n3c_spark_extractor-1.0.0.tar.gz 
+6. Run -
+    n3c_spark_extractor --config config.yaml 
+
 
 NOTE - The pyspark batch takes 15-20 minutues to complete and the timeout_in_min is set to 60 mins. In future if it takes more than 60 minutes, 
     config timeout_in_min can be set to a higher value. 
-DO NOT CHANGE following configuration values in config.yml
-    script_file:
-    manifest:
-    data_count_sql:
-    cdm_tables: 
-    person:
-    observation_period:
-    visit_occurrence:
-    condition_occurrence:
-    drug_exposure:
-    device_exposure:
-    procedure_occurrence:
-    measurement:
-    observation:
-    death:
-    location:
-    care_site:
-    provider:
-    drug_era:
-    condition_era: 
+DO NOT CHANGE configuration values in batch_config.yml

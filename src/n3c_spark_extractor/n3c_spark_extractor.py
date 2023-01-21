@@ -7,13 +7,15 @@ import os
 from pathlib import Path
 import yaml
 from google.cloud import dataproc_v1
+from datetime import date
+import traceback
+
 #
 # This class should be initialized with a config.yaml file similar to config_example.yaml
 # The trigger_batch method triggers pyspark batch to run on cloud and after a successful run of the batch, it consolidates the csv parts
 #
 # TODO - serialize the config file into a bean
 #
-
 spark_bq_jar = 'gs://spark-lib/bigquery/spark-bigquery-with-dependencies_2.12-0.27.1.jar'
 gs_bucket_config = 'gcs_bucket'
 prefix_config = 'prefix'
@@ -22,60 +24,69 @@ data_counts_folder = 'data_counts'
 mainfest = 'manifest'
 
 class n3c_spark_extractor:
-  config_file : str
-  config : any
+  env_config : any
+  batch_config : any
   gcs_bucket : str
   prefix : str
-  script_file : str
+  script_file_in_bucket : str = 'scripts/spark_sql_batch.py'
   blobs_to_delete : list
+  
 
-  def __init__(self, config_file):
-    with open(config_file, "r") as f:
-      self.config_file = config_file
-      self.config = yaml.safe_load(f)
-      self.gcs_bucket = self.config[gs_bucket_config]
-      self.prefix = self.config[prefix_config]
+  def __init__(self, env_config_on_disk, script_file_on_disk, batch_config_on_disk):
+    with open(env_config_on_disk, "r") as f:
+      self.env_config = yaml.safe_load(f)
+      self.gcs_bucket = self.env_config[gs_bucket_config]
+      self.prefix = self.env_config[prefix_config]
+
+      with open(batch_config_on_disk, "r") as bf:
+        self.batch_config = yaml.safe_load(bf)
 
       # copy the pyspark batch script to gcs
-      script = 'spark_sql_batch.py'
-      self.script_file = f'scripts/{script}'
-      if self.prefix != None:
-        self.script_file = f'{self.prefix}/{self.script_file}'
-        storage_client = storage.Client()
-        bucket = storage_client.get_bucket(self.gcs_bucket)
-        blob = bucket.blob(self.script_file)
-        print(f'Copying {script} file to gs://{self.gcs_bucket}/{self.script_file}')
-        blob.upload_from_filename(f'src/n3c_spark_extractor/{script}')
-        self.blobs_to_delete = []
-        self.blobs_to_delete.append(blob)
+      if self.prefix == None:
+        self.prefix = date.today().strftime("%b-%d-%Y")
+        print('No prefix supplied, using - {self.prefix}')
+      self.script_file = f'{self.prefix}/{self.script_file_in_bucket }'
+      storage_client = storage.Client()
+      bucket = storage_client.get_bucket(self.gcs_bucket)
+      self.script_file_in_bucket = f'{self.prefix}/{self.script_file_in_bucket}'
+      blob = bucket.blob(self.script_file_in_bucket)
+      print(f'Copying spark_sql_batch.py file to gs://{self.gcs_bucket}/{self.script_file_in_bucket }')
+      blob.upload_from_filename(script_file_on_disk)
+      self.blobs_to_delete = []
+      self.blobs_to_delete.append(blob)
 
-        # copy the config file to gcs  
-        extract_config_file = self.config_file
-        if self.prefix != None:
-          extract_config_file = f'{self.prefix}/{self.config_file}'
-        
-        config_blob = bucket.blob(extract_config_file)
-        print(f'Copying config file to gs://{self.gcs_bucket}/{extract_config_file}')
-        config_blob.upload_from_filename(self.config_file)
-        self.blobs_to_delete.append(config_blob)
+      # copy the config files to gcs         
+      config_blob1 = bucket.blob(f'{self.prefix}/batch_config.yaml')
+      print(f'Copying config file to gs://{self.gcs_bucket}/batch_config.yaml')
+      config_blob1.upload_from_filename(batch_config_on_disk)
+      self.blobs_to_delete.append(config_blob1)
+
+      print(f'Copying config file to gs://{self.gcs_bucket}/env_config.yaml')
+      config_blob2 = bucket.blob(f'{self.prefix}/env_config.yaml')
+      config_blob2.upload_from_filename(env_config_on_disk)
+      self.blobs_to_delete.append(config_blob2)
             
   def extract(self):
-    
-    # trigger pyspark batch process
-    result = self.trigger_batch()
-
-    cdm_tables = self.config[cdm_tables_config]
+    cdm_tables = self.batch_config[cdm_tables_config]
     cdm_table_list : list = cdm_tables.split(",")
     print(f'Processing {cdm_table_list}')
+    
+    try:
+      # trigger pyspark batch process
+      result = self.trigger_batch()
 
-    # compose csvs for each table
-    for table in cdm_table_list:
-      self.compose_csvs(table.strip())
-    self.compose_csvs('data_counts')
+      # compose csvs for each table
+      for table in cdm_table_list:
+        self.compose_csvs(table.strip())
+      self.compose_csvs('data_counts')
 
-    cdm_table_list.append(mainfest)
-    cdm_table_list.append(data_counts_folder)
-    self.download_csvs(cdm_table_list)
+      cdm_table_list.append(mainfest)
+      cdm_table_list.append(data_counts_folder)
+      self.download_csvs(cdm_table_list)
+    except:
+      # printing stack trace
+      traceback.print_exception(*sys.exc_info())
+      print(f'Error while trigeering with job, continuing with cleanup')
 
     # cleanup files from bucket/prefix
     self.delete_csvs(data_counts_folder)
@@ -88,31 +99,26 @@ class n3c_spark_extractor:
       try:
         blob.delete()
       except Exception as e:
-        print(f'Error while deleting {blob.name}')
+        print(f'Error while deleting {blob.name}, continuing with cleanup')
         
   def trigger_batch(self):
     from google.cloud import dataproc_v1
     print('Triggering pyspark batch')
-    project_id = self.config['project_id']
-    service_account = self.config['service_account']
-    location = self.config['region']
-    subnetwork_uri = self.config['subnetwork_uri']
-    batch_script = f'gs://{self.gcs_bucket}/{self.script_file}'
-
-    extract_config_file = self.config_file
-    if self.prefix != None:
-      extract_config_file = f'{self.prefix}/{self.config_file}'
+    service_account = self.env_config['service_account']
+    location = self.env_config['region']
+    subnetwork_uri = self.env_config['subnetwork_uri']
 
     client = dataproc_v1.BatchControllerClient( client_options={"api_endpoint": "{}-dataproc.googleapis.com:443".format(location)})
         
     # Initialize request argument(s)
     batch = dataproc_v1.Batch()
-    batch.pyspark_batch.main_python_file_uri = batch_script
+    batch.pyspark_batch.main_python_file_uri = f'gs://{self.gcs_bucket}/{self.script_file_in_bucket}'
     batch.pyspark_batch.jar_file_uris = ['gs://spark-lib/bigquery/spark-bigquery-with-dependencies_2.12-0.27.1.jar']
-    batch.pyspark_batch.file_uris = [f'gs://{self.gcs_bucket}/{extract_config_file}']
+    batch.pyspark_batch.file_uris = [f'gs://{self.gcs_bucket}/{self.prefix}/batch_config.yaml', f'gs://{self.gcs_bucket}/{self.prefix}/env_config.yaml']
 
     # Pass all the arguments you want to use in the spark job
-    batch.pyspark_batch.args = ["--extract", self.config_file]
+    batch.pyspark_batch.args = ['--batch_config', 'batch_config.yaml', 
+      '--env_config', 'env_config.yaml']
     environmentConfig = dataproc_v1.EnvironmentConfig()
     executionConfig = dataproc_v1.ExecutionConfig()
     executionConfig.service_account = service_account
@@ -121,14 +127,14 @@ class n3c_spark_extractor:
     batch.environment_config = environmentConfig
 
     request = dataproc_v1.CreateBatchRequest(
-      parent=f"projects/{project_id}/locations/{location}",
+      parent=f"projects/{self.env_config['project_id']}/locations/{self.env_config['region']}",
          batch=batch,
       )
 
     # Make a request to create a batch
     operation = client.create_batch(request=request)
     print('Waiting for operation to complete, this may take a while...')
-    wait : int = self.config['timeout_in_min'] * 60
+    wait : int = self.env_config['timeout_in_min'] * 60
     result = operation.result(timeout=wait)
     print(result)
     
@@ -211,9 +217,8 @@ class n3c_spark_extractor:
 
   def download_csvs(self, cdm_table_list):
     print('Downloading csvs...')
-
     # check if output folder exists, if not, create one
-    output_dir = self.config['output_dir']
+    output_dir = self.env_config['output_dir']
     datafiles_dir = f'{output_dir}/DATAFILES'
     if os.path.exists(output_dir):
       if os.path.exists(datafiles_dir) == False:
@@ -243,6 +248,5 @@ class n3c_spark_extractor:
             content = bucket.blob(blob.name)
             content.download_to_filename(file)
             print(f'Downaloaded {output_dir}{cdm_table_name_upper}')
-
       print('Done downloading csvs...')
       

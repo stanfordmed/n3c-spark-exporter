@@ -144,7 +144,8 @@ n3c_spark_extractor = "n3c_spark_extractor.main:main"
 [tool.setuptools]
 # If there are data files included in your packages that need to be
 # installed, specify them here.
-package-data = {"n3c_spark_extractor" = ["*.dat"]}
+package-data = {"n3c_spark_extractor" = ["spark_sql_batch.py", "config/batch_config.yaml"]}
+include-package-data = true
 
 [build-system]
 # These are the assumed default build requirements from pip:
