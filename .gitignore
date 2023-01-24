@@ -1,4 +1,5 @@
 # general things to ignore
+config.yaml
 build/
 dist/
 *.egg-info/
