@@ -20,21 +20,21 @@ To run this extractor -
     --storedata option will store the tables in subset dataset
     --nocsv option ensures the cdm_table contents do not get extracted to csvs
 2. Update the config.yaml file for your GCP environment i.e. set following configuration 
-    project_id:  gcp project id where spark batches can be run
-    service_account:  Service account email(this is same iam account you used for runiing n3c scripts)
-    region:  gcp region where spark batches can be run
-    subnetwork_uri: gcp subnet
-    gcs_bucket: gcp bucket
-    prefix: extractor where the temporary files, confiiguration files etc go and the spark batch can get the files from
-    output_dir: local folder where the extractor can download CSV files to 
+    - project_id:  gcp project id where spark batches can be run
+    - service_account:  Service account email(this is same iam account you used for runiing n3c scripts)
+    - region:  gcp region where spark batches can be run
+    - subnetwork_uri: gcp subnet
+    - gcs_bucket: gcp bucket
+    - prefix: extractor where the temporary files, confiiguration files etc go and the spark batch can get the files from
+    - output_dir: local folder where the extractor can download CSV files to 
 3. Clone the repository -
-    https://github.com/stanfordmed/n3c-spark-exporter
+    - https://github.com/stanfordmed/n3c-spark-exporter
 4. Build the module - 
-    python -m build
+    - python -m build
 5. Install the package -
-    pip install dist/n3c_spark_extractor-1.0.0.tar.gz 
+    - pip install dist/n3c_spark_extractor-1.0.0.tar.gz 
 6. Run -
-    n3c_spark_extractor --config config.yaml 
+    - n3c_spark_extractor --config config.yaml 
 
 
 NOTE - The pyspark batch takes 15-20 minutues to complete and the timeout_in_min is set to 60 mins. In future if it takes more than 60 minutes, 
