@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 import yaml
 import csv
+import logging
+
 #
 # This script should run on cloud
 #
@@ -53,7 +55,7 @@ class spark_sql_batch:
             self.run_spark_sql(dataset_id, table.strip())
         
   def run_spark_sql(self, dataset_id, cdm_table_name):
-    print(f'Starting extraction of {cdm_table_name}')
+    logging.info(f'Starting extraction of {cdm_table_name}')
     # execute the query and dump the csv parts for the cdm_table to gcs bucket
     sql = self.batch_config[cdm_table_name]
     cdm_table = self.spark.read.format('bigquery').option('table', f'{dataset_id}.{cdm_table_name}').load()
@@ -82,10 +84,10 @@ class spark_sql_batch:
     rc_sql = self.batch_config['data_count_sql'].format(table_name_upper = table_name_upper, table_name = cdm_table_name)
     rc_df = self.spark.sql(rc_sql)
     rc_df.toPandas().to_csv(f'gs://{self.gcs_bucket}/{rc_foler}/{table_name_upper}.csv', header = False, index = False, sep='|', quotechar='"', quoting=csv.QUOTE_ALL)
-    print(f'Done extraction {cdm_table_name}')
+    logging.info(f'Done extraction {cdm_table_name}')
 
   def run_spark_sql_manifest(self):
-    print(f'Extracting MINFEST.csv file')
+    logging.info(f'Extracting MANIFEST.csv file')
     dataset_id = self.env_config['results_database_schema']
     sql = self.batch_config[mainfest].format(site_abbrev = self.env_config['site_abbrev'],
       site_name = self.env_config['site_name'],
@@ -107,10 +109,10 @@ class spark_sql_batch:
     if self.prefix != None:
       manifest_prefix = f'{self.prefix}/{manifest_prefix}'
     df.toPandas().to_csv(f'gs://{self.gcs_bucket}/{manifest_prefix}', index=False, sep='|', quotechar='"', quoting=csv.QUOTE_ALL, date_format='%Y-%m-%d %H:%M:%S')    
-    print(f'Done creating MANIFEST.csv')
+    logging.info(f'Done creating MANIFEST.csv')
 
   def create_data_count_header(self) :
-    print('Extracting data_counts/header file')
+    logging.info('Extracting data_counts/header file')
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(self.gcs_bucket)
     csv_folder = 'data_counts'
@@ -118,7 +120,7 @@ class spark_sql_batch:
       csv_folder = f'{self.prefix}/data_counts'
     blob = bucket.blob(f'{csv_folder}/header.csv')
     blob.upload_from_string('"table_name"|"row_count"\n')
-    print('Done extraction data_counts/header file')
+    logging.info('Done extraction data_counts/header file')
 
 def main():
     parser = argparse.ArgumentParser(description="Utitilty to extract tables from n3c subset in to csvs")
@@ -127,9 +129,9 @@ def main():
     args = parser.parse_args()
 
     # this part runs on cloud
-    print("Running spark_extractor spark_sql_batch")
+    logging.info("Running spark_extractor spark_sql_batch")
     runner = spark_sql_batch(args.batch_config, args.env_config)
-    print("Done running spark_extractor spark_sql_batch")
+    logging.info("Done running spark_extractor spark_sql_batch")
 
 if __name__ == '__main__':
     sys.exit(main())

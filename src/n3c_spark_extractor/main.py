@@ -7,7 +7,7 @@ def main(args=None):
   parser.add_argument('--config', required=True, help='specify the name of the configuration yaml file to be used to trigger a spark batch, see file config_example.yaml')
     
   args = parser.parse_args()
-  print("Running n3c_spark_extractor")
+  print("Find the debug logs in the n3c_spark_extractor.log file")
   config_fname = args.config
   runner = n3c_spark_extractor(config_fname, 
       pkg_resources.resource_filename('n3c_spark_extractor', 'spark_sql_batch.py'), 
@@ -16,7 +16,6 @@ def main(args=None):
   #   'src/n3c_spark_extractor/spark_sql_batch.py', 
   #   'src/n3c_spark_extractor/config/batch_config.yaml')
   runner.extract()
-  print("Done running n3c_spark_extractor")
   
 if __name__ == '__main__':
   main()

@@ -9,6 +9,7 @@ import yaml
 from google.cloud import dataproc_v1
 from datetime import date
 import traceback
+import logging
 
 #
 # This class should be initialized with a config.yaml file similar to config_example.yaml
@@ -22,6 +23,13 @@ prefix_config = 'prefix'
 cdm_tables_config = 'cdm_tables'
 data_counts_folder = 'data_counts'
 mainfest = 'manifest'
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
+file_handler = logging.FileHandler('n3c_spark_extractor.log')
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
 
 class n3c_spark_extractor:
   env_config : any
@@ -31,7 +39,6 @@ class n3c_spark_extractor:
   script_file_in_bucket : str = 'scripts/spark_sql_batch.py'
   blobs_to_delete : list
   
-
   def __init__(self, env_config_on_disk, script_file_on_disk, batch_config_on_disk):
     with open(env_config_on_disk, "r") as f:
       self.env_config = yaml.safe_load(f)
@@ -44,24 +51,24 @@ class n3c_spark_extractor:
       # copy the pyspark batch script to gcs
       if self.prefix == None:
         self.prefix = date.today().strftime("%b-%d-%Y")
-        print('No prefix supplied, using - {self.prefix}')
+        logger.info('No prefix supplied, using - {self.prefix}')
       self.script_file = f'{self.prefix}/{self.script_file_in_bucket }'
       storage_client = storage.Client()
       bucket = storage_client.get_bucket(self.gcs_bucket)
       self.script_file_in_bucket = f'{self.prefix}/{self.script_file_in_bucket}'
       blob = bucket.blob(self.script_file_in_bucket)
-      print(f'Copying spark_sql_batch.py file to gs://{self.gcs_bucket}/{self.script_file_in_bucket }')
+      logger.info(f'Copying spark_sql_batch.py file to gs://{self.gcs_bucket}/{self.script_file_in_bucket }') 
       blob.upload_from_filename(script_file_on_disk)
       self.blobs_to_delete = []
       self.blobs_to_delete.append(blob)
 
       # copy the config files to gcs         
       config_blob1 = bucket.blob(f'{self.prefix}/batch_config.yaml')
-      print(f'Copying config file to gs://{self.gcs_bucket}/batch_config.yaml')
+      logger.info(f'Copying config file to gs://{self.gcs_bucket}/batch_config.yaml')
       config_blob1.upload_from_filename(batch_config_on_disk)
       self.blobs_to_delete.append(config_blob1)
 
-      print(f'Copying config file to gs://{self.gcs_bucket}/env_config.yaml')
+      logger.info(f'Copying config file to gs://{self.gcs_bucket}/env_config.yaml')
       config_blob2 = bucket.blob(f'{self.prefix}/env_config.yaml')
       config_blob2.upload_from_filename(env_config_on_disk)
       self.blobs_to_delete.append(config_blob2)
@@ -69,7 +76,7 @@ class n3c_spark_extractor:
   def extract(self):
     cdm_tables = self.batch_config[cdm_tables_config]
     cdm_table_list : list = cdm_tables.split(",")
-    print(f'Processing {cdm_table_list}')
+    logger.info(f'Processing {cdm_table_list}')
     
     try:
       # trigger pyspark batch process
@@ -83,27 +90,26 @@ class n3c_spark_extractor:
       cdm_table_list.append(mainfest)
       cdm_table_list.append(data_counts_folder)
       self.download_csvs(cdm_table_list)
-    except:
-      # printing stack trace
-      traceback.print_exception(*sys.exc_info())
-      print(f'Error while trigeering with job, continuing with cleanup')
-
-    # cleanup files from bucket/prefix
-    self.delete_csvs(data_counts_folder)
-    self.delete_csvs(mainfest)
-    for table in cdm_table_list:
-      self.delete_csvs(table.strip())
-    # cleanup files we saved to bucket
-    for blob in self.blobs_to_delete:
-      print(f'Deleting {blob.name}')
-      try:
-        blob.delete()
-      except Exception as e:
-        print(f'Error while deleting {blob.name}, continuing with cleanup')
+    except Exception as e:
+      logger.error(f'Error while trigeering with job, continuing with cleanup')
+      logger.critical(e, exc_info=True)
+    finally:
+      # cleanup files from bucket/prefix
+      self.delete_csvs(data_counts_folder)
+      self.delete_csvs(mainfest)
+      for table in cdm_table_list:
+        self.delete_csvs(table.strip())
+      # cleanup files we saved to bucket
+      for blob in self.blobs_to_delete:
+        logger.info(f'Deleting {blob.name}')
+        try:
+          blob.delete()
+        except Exception as e:
+          logger.error(f'Error while deleting {blob.name}, continuing with cleanup') 
         
   def trigger_batch(self):
     from google.cloud import dataproc_v1
-    print('Triggering pyspark batch')
+    logger.info('Triggering pyspark batch')
     service_account = self.env_config['service_account']
     location = self.env_config['region']
     subnetwork_uri = self.env_config['subnetwork_uri']
@@ -113,7 +119,7 @@ class n3c_spark_extractor:
     # Initialize request argument(s)
     batch = dataproc_v1.Batch()
     batch.pyspark_batch.main_python_file_uri = f'gs://{self.gcs_bucket}/{self.script_file_in_bucket}'
-    batch.pyspark_batch.jar_file_uris = ['gs://spark-lib/bigquery/spark-bigquery-with-dependencies_2.12-0.27.1.jar']
+    batch.pyspark_batch.jar_file_uris = [spark_bq_jar] 
     batch.pyspark_batch.file_uris = [f'gs://{self.gcs_bucket}/{self.prefix}/batch_config.yaml', f'gs://{self.gcs_bucket}/{self.prefix}/env_config.yaml']
 
     # Pass all the arguments you want to use in the spark job
@@ -133,30 +139,27 @@ class n3c_spark_extractor:
 
     # Make a request to create a batch
     operation = client.create_batch(request=request)
-    print('Waiting for operation to complete, this may take a while...')
+    logger.info('Waiting for operation to complete, this may take a while...')
     wait : int = self.env_config['timeout_in_min'] * 60
     result = operation.result(timeout=wait)
-    print(result)
+    logger.info(result)
     
   def delete_csvs(self, cdm_table_name) : 
-    print(f'Checking if {cdm_table_name} exists in bucket {self.gcs_bucket}') 
+    logger.info(f'Checking if {cdm_table_name} exists in bucket {self.gcs_bucket}') 
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(self.gcs_bucket)
     cdm_table_name_upper = cdm_table_name.upper()
     for page in bucket.list_blobs().pages:
       for blob in page:
-        if blob.name.startswith(f'{self.prefix}') and \
-          (blob.name.endswith('header.csv') == True or \
-            cdm_table_name in blob.name or \
-              cdm_table_name_upper in blob.name): 
-          print(f'Deleting {blob.name}')
+        if blob.name.startswith(f'{self.prefix}') and cdm_table_name in blob.name.upper(): 
+          logger.info(f'Deleting {blob.name}')
           try:
             blob.delete()
           except Exception as e:
-            print(f'Error while deleting {blob.name}')
+            logger.info(f'Error while deleting {blob.name}')
       
   def compose_csvs(self, cdm_table_name) :
-    print(f'Composing csv parts for {cdm_table_name}')
+    logger.info(f'Composing csv parts for {cdm_table_name}')
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(self.gcs_bucket)
     path = cdm_table_name
@@ -180,7 +183,7 @@ class n3c_spark_extractor:
             segments.append(blob)
         
     for segment in segments:
-      print ('Adding file - ' + segment.name)
+      logger.info ('Adding file - ' + segment.name)
     cdm_table_upper = cdm_table_name.upper()
     destination = bucket.blob(f'{self.prefix}/{cdm_table_upper}.csv')
 
@@ -197,14 +200,14 @@ class n3c_spark_extractor:
           next_blob.content_type = "text/plain"
           next_blob.compose(segments[windex:i])
           compositions.append(next_blob)
-          print("Composed from %s-%s -> %s", windex, i - 1, next_blob.name)
+          logger.info("Composed from %s-%s -> %s", windex, i - 1, next_blob.name)
           windex = i
       if windex < len(segments):
         next_blob = bucket.blob("{}-tmp-{:02d}-{:02d}.csv".format(self.prefix[:-1], windex, len(segments)))
         next_blob.content_type = "text/plain"
         next_blob.compose(segments[windex:len(segments)])
         compositions.append(next_blob)
-        print("Composed from %s-%s -> %s (final)", windex, len(segments), next_blob.name)
+        logger.info("Composed from %s-%s -> %s (final)", windex, len(segments), next_blob.name)
         destination.compose(compositions)
 
       # Delete intermediate compositions
@@ -213,10 +216,10 @@ class n3c_spark_extractor:
     # Delete the temporary header file and all part files
     for segment in segments :
       segment.delete()
-    print(f'Done composing csv parts for {cdm_table_name}')
+    logger.info(f'Done composing csv parts for {cdm_table_name}')
 
   def download_csvs(self, cdm_table_list):
-    print('Downloading csvs...')
+    logger.info('Downloading csvs...')
     # check if output folder exists, if not, create one
     output_dir = self.env_config['output_dir']
     datafiles_dir = f'{output_dir}/DATAFILES'
@@ -232,7 +235,7 @@ class n3c_spark_extractor:
       cdm_table = table.strip()
       cdm_table_name_upper = cdm_table.upper()
       cdm_table_name_upper = f'{cdm_table_name_upper}.csv'
-      print(f'Downaloading {cdm_table_name_upper} from gcs bucket {self.gcs_bucket}') 
+      logger.info(f'Downaloading {cdm_table_name_upper} from gcs bucket {self.gcs_bucket}') 
       
       storage_client = storage.Client()
       bucket = storage_client.get_bucket(self.gcs_bucket)
@@ -240,13 +243,13 @@ class n3c_spark_extractor:
       for page in bucket.list_blobs().pages:
         for blob in page:
           if blob.name.startswith(f'{self.prefix}') and cdm_table_name_upper in blob.name and data_counts_folder not in blob.name: 
-            print(f'Downlaoding {blob.name}')
+            logger.info(f'Downlaoding {blob.name}')
             output_folder = output_dir
             if cdm_table != mainfest and cdm_table != data_counts_folder:
               output_folder = datafiles_dir
             file = f'{output_folder}/{cdm_table_name_upper}'
             content = bucket.blob(blob.name)
             content.download_to_filename(file)
-            print(f'Downaloaded {output_dir}{cdm_table_name_upper}')
-      print('Done downloading csvs...')
+            logger.info(f'Downaloaded {output_dir}{cdm_table_name_upper}')
+      logger.info('Done downloading csvs...')
       
