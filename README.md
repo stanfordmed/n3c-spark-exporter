@@ -31,6 +31,7 @@ To run this extractor -
     - n3c_spark_extractor --config config.yaml 
 7. Zip the CSVs and sftp as https://github.com/National-COVID-Cohort-Collaborative/Phenotype_Data_Acquisition/wiki/Instructions-for-Sites:-OMOP-Data-Model 
 
-NOTE - The timeout_in_min is set to 60 mins, the pyspark batch generally takes 15-20 minutes to complete. In future if it takes more than 60 minutes, config timeout_in_min can be set to a higher value. 
-
+NOTES - 
+    - The timeout_in_min is set to 60 mins, the pyspark batch generally takes 15-20 minutes to complete. In future if it takes more than 60 minutes, config timeout_in_min can be set to a higher value. 
+    - If you happen to kill the n3c_spark_extractor process and if the spark job was already triggered, wait until it finishes before you run n3c_spark_extractor again
 DO NOT CHANGE configuration values in batch_config.yml

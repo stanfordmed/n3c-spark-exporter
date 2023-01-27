@@ -16,6 +16,7 @@ def main(args=None):
   #   'src/n3c_spark_extractor/spark_sql_batch.py', 
   #   'src/n3c_spark_extractor/config/batch_config.yaml')
   runner.extract()
+  print("Done with extraction, please find the debug logs in the n3c_spark_extractor.log file")
   
 if __name__ == '__main__':
   main()

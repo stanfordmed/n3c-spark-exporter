@@ -74,15 +74,18 @@ class n3c_spark_extractor:
       self.blobs_to_delete.append(config_blob2)
             
   def extract(self):
-    cdm_tables = self.batch_config[cdm_tables_config]
-    cdm_table_list : list = cdm_tables.split(",")
-    logger.info(f'Processing {cdm_table_list}')
+    # cleanup files from bucket/prefix
+    self.cleanup()
     
     try:
+      logger.info(f'Composing {self.batch_config[cdm_tables_config]}')
       # trigger pyspark batch process
       result = self.trigger_batch()
 
       # compose csvs for each table
+      cdm_tables = self.batch_config[cdm_tables_config]
+      cdm_table_list : list = cdm_tables.split(",")
+      logger.info(f'Composing {cdm_table_list}')
       for table in cdm_table_list:
         self.compose_csvs(table.strip())
       self.compose_csvs('data_counts')
@@ -90,22 +93,23 @@ class n3c_spark_extractor:
       cdm_table_list.append(mainfest)
       cdm_table_list.append(data_counts_folder)
       self.download_csvs(cdm_table_list)
+      output_dir = self.env_config['output_dir']
+      logger.info(f'Done with the extracting csvs, files can be found in {output_dir}')
     except Exception as e:
       logger.error(f'Error while trigeering with job, continuing with cleanup')
       logger.critical(e, exc_info=True)
     finally:
       # cleanup files from bucket/prefix
-      self.delete_csvs(data_counts_folder)
-      self.delete_csvs(mainfest)
-      for table in cdm_table_list:
-        self.delete_csvs(table.strip())
+      self.cleanup()
+      
       # cleanup files we saved to bucket
       for blob in self.blobs_to_delete:
         logger.info(f'Deleting {blob.name}')
         try:
           blob.delete()
         except Exception as e:
-          logger.error(f'Error while deleting {blob.name}, continuing with cleanup') 
+          logger.error(f'Error while deleting {blob.name}, continuing with cleanup')
+      logger.info(f'Done with the cleanup')
         
   def trigger_batch(self):
     from google.cloud import dataproc_v1
@@ -144,6 +148,15 @@ class n3c_spark_extractor:
     result = operation.result(timeout=wait)
     logger.info(result)
     
+
+  def cleanup(self) :
+    cdm_tables = self.batch_config[cdm_tables_config]
+    cdm_table_list : list = cdm_tables.split(",")
+    self.delete_csvs(data_counts_folder)
+    self.delete_csvs(mainfest)
+    for table in cdm_table_list:
+      self.delete_csvs(table.strip())
+
   def delete_csvs(self, cdm_table_name) : 
     logger.info(f'Checking if {cdm_table_name} exists in bucket {self.gcs_bucket}') 
     storage_client = storage.Client()
@@ -151,7 +164,7 @@ class n3c_spark_extractor:
     cdm_table_name_upper = cdm_table_name.upper()
     for page in bucket.list_blobs().pages:
       for blob in page:
-        if blob.name.startswith(f'{self.prefix}') and cdm_table_name in blob.name.upper(): 
+        if blob.name.startswith(f'{self.prefix}') and cdm_table_name.upper() in blob.name.upper(): 
           logger.info(f'Deleting {blob.name}')
           try:
             blob.delete()
