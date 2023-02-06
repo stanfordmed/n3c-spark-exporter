@@ -1,0 +1,270 @@
+# DO NOT CHANGE ANYTHING IN THIS FILE
+manifest: |
+  select
+   '{site_abbrev}' as site_abbrev,
+   '{site_name}'  as site_name,
+   '{contact_name}' as contact_name,
+   '{contact_email}' as contact_email,
+   '{cdm_name}' as cdm_name,
+   '{cdm_version}' as cdm_version,
+   (SELECT  vocabulary_version from n3c_pre_cohort LIMIT 1) as vocabulary_version,
+   'Y' as n3c_phenotype_yn,
+   (SELECT  phenotype_version from n3c_pre_cohort LIMIT 1) as n3c_phenotype_version,
+   '{shift_date_yn}' as shift_date_yn,
+   '{max_num_shift_days}' as max_num_shift_days,
+   to_timestamp(current_date()) as run_date,
+   to_timestamp(date_add(current_date(), -{data_latency_num_days})) as update_date,	
+   to_timestamp(date_add(current_date(), {days_between_submissions})) as next_submission_date;
+
+data_count_sql: |
+  select '{table_name_upper}', count(*) dup_count from {table_name};
+
+cdm_tables: person,observation_period,visit_occurrence,condition_occurrence,drug_exposure,device_exposure,procedure_occurrence,measurement,observation,death,location,care_site,provider,drug_era,condition_era
+
+person: |
+  select
+   person_id,
+   gender_concept_id,
+   year_of_birth,
+   month_of_birth,
+   race_concept_id,
+   ethnicity_concept_id,
+   location_id,
+   provider_id,
+   care_site_id,
+   person_source_value,
+   gender_source_value,
+   race_source_value,
+   race_source_concept_id,
+   ethnicity_source_value,
+   ethnicity_source_concept_id
+  from person;
+
+observation_period: |
+  select
+   observation_period_id,
+   person_id,
+   to_timestamp(observation_period_start_date) as observation_period_start_date,
+   to_timestamp(observation_period_end_date) as observation_period_end_date,
+   period_type_concept_id
+  from observation_period;
+
+visit_occurrence: |
+  select
+   visit_occurrence_id,
+   person_id,
+   visit_concept_id,
+   to_timestamp(visit_start_date) as visit_start_date,
+   to_timestamp(visit_start_datetime) as visit_start_datetime,
+   to_timestamp(visit_end_date) as visit_end_date,
+   to_timestamp(visit_end_datetime) as visit_end_datetime,
+   visit_type_concept_id,
+   provider_id,
+   care_site_id,
+   visit_source_value,
+   visit_source_concept_id,
+   admitting_source_concept_id,
+   admitting_source_value,
+   discharge_to_concept_id,
+   discharge_to_source_value,
+   preceding_visit_occurrence_id
+  from visit_occurrence;
+
+condition_occurrence: |
+  select
+   condition_occurrence_id,
+   person_id,
+   condition_concept_id,
+   to_timestamp(condition_start_date) as condition_start_date,
+   to_timestamp(condition_start_datetime) as condition_start_datetime,
+   to_timestamp(condition_end_date) as condition_end_date,
+   to_timestamp(condition_end_datetime) as condition_end_datetime,
+   condition_type_concept_id,
+   condition_status_concept_id,
+   CAST(NULL AS STRING) as stop_reason,
+   visit_occurrence_id,
+   CAST(NULL AS LONG) as visit_detail_id,
+   condition_source_value,
+   condition_source_concept_id,
+   CAST(NULL AS STRING) as condition_status_source_value
+  from condition_occurrence;
+
+drug_exposure: |
+  select
+    drug_exposure_id,
+    person_id,
+    drug_concept_id,
+    to_timestamp(drug_exposure_start_date) as drug_exposure_start_date,
+    to_timestamp(drug_exposure_start_datetime) as drug_exposure_start_datetime,
+    to_timestamp(drug_exposure_end_date) as drug_exposure_end_date,
+    to_timestamp(drug_exposure_end_datetime) as drug_exposure_end_datetime,
+    drug_type_concept_id,
+    CAST(NULL AS STRING) as stop_reason,
+    refills,
+    quantity,
+    days_supply,
+    CAST(NULL AS STRING) as sig,
+    route_concept_id,
+    lot_number,
+    provider_id,
+    visit_occurrence_id,
+    CAST(NULL AS LONG) as visit_detail_id,
+    drug_source_value,
+    drug_source_concept_id,
+    route_source_value,
+    dose_unit_source_value
+  from drug_exposure;
+
+device_exposure: |
+  select
+    DEVICE_EXPOSURE_ID,
+    PERSON_ID,
+    DEVICE_CONCEPT_ID,
+    to_timestamp(DEVICE_EXPOSURE_START_DATE) as DEVICE_EXPOSURE_START_DATE,
+    to_timestamp(DEVICE_EXPOSURE_START_DATETIME) as DEVICE_EXPOSURE_START_DATETIME,
+    to_timestamp(DEVICE_EXPOSURE_END_DATE) as DEVICE_EXPOSURE_END_DATE,
+    to_timestamp(DEVICE_EXPOSURE_END_DATETIME) as DEVICE_EXPOSURE_END_DATETIME,
+    DEVICE_TYPE_CONCEPT_ID,
+    CAST(NULL AS STRING) as UNIQUE_DEVICE_ID,
+    QUANTITY,
+    PROVIDER_ID,
+    VISIT_OCCURRENCE_ID,
+    CAST(NULL AS LONG) as VISIT_DETAIL_ID,
+    DEVICE_SOURCE_VALUE,
+    DEVICE_SOURCE_CONCEPT_ID
+  FROM device_exposure;
+
+procedure_occurrence: |
+  select
+    procedure_occurrence_id,
+    person_id,
+    procedure_concept_id,
+    to_timestamp(procedure_date) as procedure_date,
+    to_timestamp(procedure_datetime) as procedure_datetime,
+    procedure_type_concept_id,
+    modifier_concept_id,
+    quantity,
+    provider_id,
+    visit_occurrence_id,
+    CAST(NULL AS LONG) as visit_detail_id,
+    procedure_source_value,
+    procedure_source_concept_id,
+    CAST(NULL AS STRING) as modifier_source_value
+  from procedure_occurrence;
+
+measurement:
+  SELECT
+       measurement_id,
+       person_id,
+       measurement_concept_id,
+       to_timestamp(measurement_date) AS measurement_date,
+       to_timestamp(measurement_datetime) AS measurement_datetime,
+       to_timestamp(NULL) as measurement_time,
+       measurement_type_concept_id,
+       operator_concept_id,
+       value_as_number,
+       value_as_concept_id,
+       unit_concept_id,
+       range_low,
+       range_high,
+       provider_id,
+       visit_occurrence_id,
+       CAST(NULL AS LONG) as visit_detail_id,
+       measurement_source_value,
+       measurement_source_concept_id,
+       CAST(NULL AS STRING) as unit_source_value,
+       CAST(NULL AS STRING) as value_source_value
+    FROM measurement;
+
+observation: |
+  select
+   observation_id,
+   person_id,
+   observation_concept_id,
+   to_timestamp(observation_date) as observation_date,
+   to_timestamp(observation_datetime) as observation_datetime,
+   observation_type_concept_id,
+   value_as_number,
+   value_as_string,
+   value_as_concept_id,
+   qualifier_concept_id,
+   unit_concept_id,
+   provider_id,
+   visit_occurrence_id,
+   CAST(NULL AS LONG) as visit_detail_id,
+   observation_source_value,
+   observation_source_concept_id,
+   CAST(NULL AS STRING) as unit_source_value,
+   CAST(NULL AS STRING) as qualifier_source_value
+  from observation;
+
+death: |
+  select
+   person_id,
+   to_timestamp(death_date) as death_date,
+   to_timestamp(death_datetime) as death_datetime,
+   death_type_concept_id,
+   cause_concept_id,
+   CAST(NULL AS STRING) as cause_source_value,
+   cause_source_concept_id
+  from death d;
+
+location: |
+  select
+   location_id,
+   CAST(NULL AS STRING) as address_1, -- to avoid identifying information
+   CAST(NULL AS STRING) as address_2, -- to avoid identifying information
+   city,
+   state,
+   zip,
+   county,
+   CAST(NULL AS STRING) as location_source_value
+  from location
+
+care_site: |
+  select
+   care_site_id,
+   care_site_name,
+   place_of_service_concept_id,
+   CAST(NULL AS LONG) as location_id,
+   CAST(NULL AS STRING) as care_site_source_value,
+   CAST(NULL AS STRING) as place_of_service_source_value  
+   from care_site;
+
+provider: |
+  select
+   provider_id,
+   CAST(NULL AS LONG) as provider_name, -- to avoid accidentally identifying sites
+   CAST(NULL AS LONG) as npi, -- to avoid accidentally identifying sites
+   CAST(NULL AS LONG) as dea, -- to avoid accidentally identifying sites
+   specialty_concept_id,
+   care_site_id,
+   CAST(NULL AS LONG) as year_of_birth,
+   gender_concept_id,
+   CAST(NULL AS LONG) as provider_source_value, -- to avoid accidentally identifying sites
+   specialty_source_value,
+   specialty_source_concept_id,
+   gender_source_value,
+   gender_source_concept_id
+  from provider;
+
+drug_era: |
+  select
+   drug_era_id,
+   person_id,
+   drug_concept_id,
+   to_timestamp(drug_era_start_date ) as drug_era_start_date,
+   to_timestamp(drug_era_end_date) as drug_era_end_date,
+   drug_exposure_count,
+   gap_days
+  from drug_era;
+
+condition_era: |
+  select
+   condition_era_id,
+   person_id,
+   condition_concept_id,
+   to_timestamp(condition_era_start_date) as condition_era_start_date,
+   to_timestamp(condition_era_end_date) as condition_era_end_date,
+   condition_occurrence_count
+  from condition_era;
