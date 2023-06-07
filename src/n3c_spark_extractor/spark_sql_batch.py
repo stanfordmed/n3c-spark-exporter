@@ -11,7 +11,6 @@ import logging
 #
 # This script should run on cloud
 #
-spark_bq_jar = 'gs://spark-lib/bigquery/spark-bigquery-with-dependencies_2.12-0.27.1.jar'
 gs_bucket_config = 'gcs_bucket'
 prefix_config = 'prefix'
 cdm_tables_config = 'cdm_tables'
@@ -32,12 +31,11 @@ class spark_sql_batch:
   def __init__(self, batch_config_file, env_config_file):
     from pyspark.sql import SparkSession
     with open(batch_config_file, "r") as f: 
-      # create spark session and set the temp bucket
-      self.spark = SparkSession.builder.appName('N3C_extract_runner').config('spark.jars', spark_bq_jar).getOrCreate()
       self.batch_config = yaml.safe_load(f)
 
       with open(env_config_file, "r") as ef: 
         self.env_config = yaml.safe_load(ef)
+        self.spark = SparkSession.builder.appName('N3C_extract_runner').config('spark.jars', self.env_config['spark_bq_jar']).getOrCreate()
         self.gcs_bucket = self.env_config[gs_bucket_config]
         self.spark.conf.set('temporaryGcsBucket', self.gcs_bucket)
         self.prefix = self.env_config[prefix_config]

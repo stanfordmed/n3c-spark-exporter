@@ -17,7 +17,7 @@ import logging
 #
 # TODO - serialize the config file into a bean
 #
-spark_bq_jar = 'gs://spark-lib/bigquery/spark-bigquery-with-dependencies_2.12-0.27.1.jar'
+spark_bq_jar = 'gs://spark-lib/bigquery/spark-bigquery-with-dependencies_2.13-0.31.0.jar'
 gs_bucket_config = 'gcs_bucket'
 prefix_config = 'prefix'
 cdm_tables_config = 'cdm_tables'
@@ -123,7 +123,7 @@ class n3c_spark_extractor:
     # Initialize request argument(s)
     batch = dataproc_v1.Batch()
     batch.pyspark_batch.main_python_file_uri = f'gs://{self.gcs_bucket}/{self.script_file_in_bucket}'
-    batch.pyspark_batch.jar_file_uris = [spark_bq_jar] 
+    batch.pyspark_batch.jar_file_uris = [self.env_config['spark_bq_jar']] 
     batch.pyspark_batch.file_uris = [f'gs://{self.gcs_bucket}/{self.prefix}/batch_config.yaml', f'gs://{self.gcs_bucket}/{self.prefix}/env_config.yaml']
 
     # Pass all the arguments you want to use in the spark job
