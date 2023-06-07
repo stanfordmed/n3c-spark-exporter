@@ -9,7 +9,7 @@ This extractor can successfully extract huge tables within few minutes. It uses 
 N3C script https://github.com/National-COVID-Cohort-Collaborative/Phenotype_Data_Acquisition/blob/master/Exporters/PythonExporter_bigquery/db_exp.py 
 
 To run this extractor -
-1. [Optional] If you do not plan to include the controls data, create a copy of /<path-to-n3c-scripts>/Phenotype_Data_Acquisition/PhenotypeScripts/N3C_phenotype_omop_bigquery.sql with name /<path-to-n3c-scripts>/Phenotype_Data_Acquisition/PhenotypeScripts/N3C_phenotype_omop_bigquery_no_controls.sql and update -
+1. [Optional] If you plan to NOT include the controls data, create a copy of /<path-to-n3c-scripts>/Phenotype_Data_Acquisition/PhenotypeScripts/N3C_phenotype_omop_bigquery.sql with name /<path-to-n3c-scripts>/Phenotype_Data_Acquisition/PhenotypeScripts/N3C_phenotype_omop_bigquery_no_controls.sql and update -
     - insert into @resultsDatabaseSchema.n3c_cohort
         select distinct case_person_id as person_id
         from @resultsDatabaseSchema.n3c_control_map
@@ -23,7 +23,7 @@ To run this extractor -
         from @resultsDatabaseSchema.n3c_control_map;
         
 2.  Run https://github.com/National-COVID-Cohort-Collaborative/Phenotype_Data_Acquisition/blob/master/Exporters/PythonExporter_bigquery/db_exp.py with command - 
-    - [Optional] If you do not plan to include the controls data, run command - 
+    - [Optional] If you plan to NOT include the controls data, run command - 
         - nohup python3 db_exp.py --debug --storedata --nocsv --database bigquery --config config.ini --output_dir <output-dir> --phenotype /<path-to-n3c-scripts>/Phenotype_Data_Acquisition/PhenotypeScripts/N3C_phenotype_omop_bigquery_no_controls.sql --extract /<path-to-n3c-scripts>/Phenotype_Data_Acquisition/ExtractScripts/N3C_extract_omop_bigquery.sql | tee <output_log>
     - Otherwise run - 
         - nohup python3 db_exp.py --debug --storedata --nocsv --database bigquery --config config.ini --output_dir <output-dir> --phenotype /<path-to-n3c-scripts>/Phenotype_Data_Acquisition/PhenotypeScripts/N3C_phenotype_omop_bigquery.sql --extract /<path-to-n3c-scripts>/Phenotype_Data_Acquisition/ExtractScripts/N3C_extract_omop_bigquery.sql | tee <output_log>
