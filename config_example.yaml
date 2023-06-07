@@ -34,3 +34,5 @@ days_between_submissions: 0
 shift_date_yn: N
 # set below to number of days, UNKNOWN if shifting and not known, NA if not shifting
 max_num_shift_days: NA
+
+spark_bq_jar: gs://spark-lib/bigquery/spark-bigquery-with-dependencies_2.13-0.31.0.jar
