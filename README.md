@@ -42,7 +42,7 @@ To run this extractor -
 4. Build the module - 
     - python -m build
 5. Install the package -
-    - pip install dist/n3c_spark_extractor-1.0.1.tar.gz 
+    - pip install dist/n3c_spark_extractor-1.0.2.tar.gz 
 6. Run -
     - n3c_spark_extractor --config config.yaml 
 7. Zip the CSVs and sftp as https://github.com/National-COVID-Cohort-Collaborative/Phenotype_Data_Acquisition/wiki/Instructions-for-Sites:-OMOP-Data-Model 
@@ -55,3 +55,4 @@ DO NOT CHANGE configuration values in batch_config.yml
 Version history -
     - 1.0.0 - Initial version
     - 1.0.1 - Fix for passing bigquery-jar file location in yaml file
+    - 1.0.2 - Added a configuration delete_merged_csvs_from_bucket to disable deletion merged CSV files from GCP bucket
