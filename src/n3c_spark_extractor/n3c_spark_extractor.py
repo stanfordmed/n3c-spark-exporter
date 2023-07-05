@@ -38,8 +38,10 @@ class n3c_spark_extractor:
   prefix : str
   script_file_in_bucket : str = 'scripts/spark_sql_batch.py'
   blobs_to_delete : list
+  delete_merged_csvs_from_bucket : bool
   
   def __init__(self, env_config_on_disk, script_file_on_disk, batch_config_on_disk):
+    self.delete_merged_csvs_from_bucket = 1
     with open(env_config_on_disk, "r") as f:
       self.env_config = yaml.safe_load(f)
       self.gcs_bucket = self.env_config[gs_bucket_config]
@@ -52,6 +54,8 @@ class n3c_spark_extractor:
       if self.prefix == None:
         self.prefix = date.today().strftime("%b-%d-%Y")
         logger.info('No prefix supplied, using - {self.prefix}')
+      if 'delete_merged_csvs_from_bucket' in self.env_config:
+        self.delete_merged_csvs_from_bucket = self.env_config['delete_merged_csvs_from_bucket']
       self.script_file = f'{self.prefix}/{self.script_file_in_bucket }'
       storage_client = storage.Client()
       bucket = storage_client.get_bucket(self.gcs_bucket)
@@ -75,7 +79,7 @@ class n3c_spark_extractor:
             
   def extract(self):
     # cleanup files from bucket/prefix
-    self.cleanup()
+    self.cleanup(True)
     
     try:
       logger.info(f'Composing {self.batch_config[cdm_tables_config]}')
@@ -100,7 +104,7 @@ class n3c_spark_extractor:
       logger.critical(e, exc_info=True)
     finally:
       # cleanup files from bucket/prefix
-      self.cleanup()
+      self.cleanup(False)
       
       # cleanup files we saved to bucket
       for blob in self.blobs_to_delete:
@@ -149,27 +153,28 @@ class n3c_spark_extractor:
     logger.info(result)
     
 
-  def cleanup(self) :
+  def cleanup(self, prerun_cleanup) :
     cdm_tables = self.batch_config[cdm_tables_config]
     cdm_table_list : list = cdm_tables.split(",")
-    self.delete_csvs(data_counts_folder)
-    self.delete_csvs(mainfest)
-    for table in cdm_table_list:
-      self.delete_csvs(table.strip())
-
-  def delete_csvs(self, cdm_table_name) : 
-    logger.info(f'Checking if {cdm_table_name} exists in bucket {self.gcs_bucket}') 
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(self.gcs_bucket)
-    cdm_table_name_upper = cdm_table_name.upper()
-    for page in bucket.list_blobs().pages:
-      for blob in page:
-        if blob.name.startswith(f'{self.prefix}') and cdm_table_name.upper() in blob.name.upper(): 
-          logger.info(f'Deleting {blob.name}')
-          try:
-            blob.delete()
-          except Exception as e:
-            logger.info(f'Error while deleting {blob.name}')
+    if prerun_cleanup == True or (self.delete_merged_csvs_from_bucket == 1):
+      self.delete_blob(bucket.get_blob(f'{self.prefix}/{data_counts_folder}.csv'))
+      self.delete_blob(bucket.get_blob(f'{self.prefix}/{data_counts_folder}/'))
+      self.delete_blob(bucket.get_blob(f'{self.prefix}/{mainfest}.csv'))
+      for table in cdm_table_list:
+        self.delete_blob(bucket.get_blob(f'{self.prefix}/{table.strip().lower()}.csv'))
+    for table in cdm_table_list:
+        self.delete_blob(bucket.get_blob(f'{self.prefix}/{table.strip().lower()}/_SUCCESS'))
+        self.delete_blob(bucket.get_blob(f'{self.prefix}/{table.strip().lower()}/'))
+  
+  def delete_blob(self, blob):
+    if blob != None:
+      try:
+         blob.delete()
+         logger.info(f'Deleted {blob.name}') 
+      except Exception as e:
+        logger.info(f'Error while deleting {blob.name}')
       
   def compose_csvs(self, cdm_table_name) :
     logger.info(f'Composing csv parts for {cdm_table_name}')

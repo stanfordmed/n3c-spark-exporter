@@ -8,6 +8,7 @@ dist/
 __pycache__/
 *.so
 *~
+n3c_spark_extractor.log
 
 # due to using tox and pytest
 .tox
