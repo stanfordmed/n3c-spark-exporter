@@ -56,3 +56,4 @@ Version history -
     - 1.0.0 - Initial version
     - 1.0.1 - Fix for passing bigquery-jar file location in yaml file
     - 1.0.2 - Added a configuration delete_merged_csvs_from_bucket to disable deletion merged CSV files from GCP bucket
+    - 1.0.3 - Removed timestamps in MANIFEST.csv and updated config_example.yaml
