@@ -106,7 +106,7 @@ class spark_sql_batch:
     manifest_prefix = 'MANIFEST.csv'
     if self.prefix != None:
       manifest_prefix = f'{self.prefix}/{manifest_prefix}'
-    df.toPandas().to_csv(f'gs://{self.gcs_bucket}/{manifest_prefix}', index=False, sep='|', quotechar='"', quoting=csv.QUOTE_ALL, date_format='%Y-%m-%d %H:%M:%S')    
+    df.toPandas().to_csv(f'gs://{self.gcs_bucket}/{manifest_prefix}', index=False, sep='|', quotechar='"', quoting=csv.QUOTE_ALL, date_format='%Y-%m-%d')    
     logging.info(f'Done creating MANIFEST.csv')
 
   def create_data_count_header(self) :

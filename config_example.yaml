@@ -23,11 +23,12 @@ site_name: site-name
 contact_name: firstname lastname
 contact_email: email
 # cdm name (pcornet, omop, act)
-cdm_name: omop
+cdm_name: OMOP
 cdm_version: 5.3.1
 vocabulary_version: v5.0 2022-06-09
 # set below to Y or N
 n3c_phenotype_yn: Y
+# latency days between (current) run date and clarity date
 data_latency_num_days: 14 
 days_between_submissions: 0
 # set below to Y or N
