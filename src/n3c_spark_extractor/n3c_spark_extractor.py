@@ -21,6 +21,7 @@ spark_bq_jar = 'gs://spark-lib/bigquery/spark-bigquery-with-dependencies_2.13-0.
 gs_bucket_config = 'gcs_bucket'
 prefix_config = 'prefix'
 cdm_tables_config = 'cdm_tables'
+additional_cdm_tables = 'additional_cdm_tables'
 data_counts_folder = 'data_counts'
 mainfest = 'manifest'
 logger = logging.getLogger()
@@ -82,7 +83,7 @@ class n3c_spark_extractor:
     self.cleanup(True)
     
     try:
-      logger.info(f'Composing {self.batch_config[cdm_tables_config]}')
+      logger.info(f'Composing {self.get_cdm_tables()}')
       # trigger pyspark batch process
       result = self.trigger_batch()
 
@@ -154,7 +155,7 @@ class n3c_spark_extractor:
     
 
   def cleanup(self, prerun_cleanup) :
-    cdm_tables = self.batch_config[cdm_tables_config]
+    cdm_tables = self.get_cdm_tables()
     cdm_table_list : list = cdm_tables.split(",")
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(self.gcs_bucket)
@@ -167,6 +168,11 @@ class n3c_spark_extractor:
     for table in cdm_table_list:
         self.delete_blob(bucket.get_blob(f'{self.prefix}/{table.strip().lower()}/_SUCCESS'))
         self.delete_blob(bucket.get_blob(f'{self.prefix}/{table.strip().lower()}/'))
+        
+  def get_cdm_tables(self) :
+    if additional_cdm_tables in self.env_config:
+      return f'{self.batch_config[cdm_tables_config].strip()},{self.env_config[additional_cdm_tables].strip()}'
+    return self.batch_config[cdm_tables_config].strip()
   
   def delete_blob(self, blob):
     if blob != None:

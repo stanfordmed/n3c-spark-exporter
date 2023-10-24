@@ -18,6 +18,7 @@ data_counts_folder = 'data_counts'
 
 timestamp_format = 'yyyy-MM-dd HH:mm:ss'
 mainfest = 'manifest'
+additional_cdm_tables = 'additional_cdm_tables'
 
 class spark_sql_batch:
   spark : any
@@ -47,6 +48,8 @@ class spark_sql_batch:
         # extract cdm_tables from subset(persist_database_schema) dataset as csv part files
         dataset_id = self.env_config['persist_database_schema']
         cdm_tables = self.batch_config[cdm_tables_config].strip()
+        if additional_cdm_tables in self.env_config:
+          cdm_tables = f'{cdm_tables},{self.env_config[additional_cdm_tables].strip()}'
         cdm_table_list = cdm_tables.split(",")
         for table in cdm_table_list:
           if table in self.batch_config:       

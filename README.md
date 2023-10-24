@@ -37,12 +37,13 @@ To run this extractor -
     - gcs_bucket: gcp bucket
     - prefix: extractor where the temporary files, configuration files etc go and the spark batch can get the files from
     - output_dir: local folder where the extractor can download CSV files to 
+    - additional_cdm_tables: OPTIONAL if additional_cdm_tables is not supplied, it will extract only - person,observation_period,visit_occurrence,condition_occurrence,drug_exposure,device_exposure,procedure_occurrence,measurement,observation,death,location,care_site,provider,drug_era,condition_era for any additonal cdm tables supply the remaining tables list and the sql for those tables (refer to config_example.yaml file)
 3. Clone the repository -
     - https://github.com/stanfordmed/n3c-spark-exporter
 4. Build the module - 
     - python -m build
 5. Install the package -
-    - pip install dist/n3c_spark_extractor-1.0.2.tar.gz 
+    - pip install dist/n3c_spark_extractor-1.2.0.tar.gz 
 6. Run -
     - n3c_spark_extractor --config config.yaml 
 7. Zip the CSVs and sftp as https://github.com/National-COVID-Cohort-Collaborative/Phenotype_Data_Acquisition/wiki/Instructions-for-Sites:-OMOP-Data-Model 
@@ -57,3 +58,4 @@ Version history -
     - 1.0.1 - Fix for passing bigquery-jar file location in yaml file
     - 1.0.2 - Added a configuration delete_merged_csvs_from_bucket to disable deletion merged CSV files from GCP bucket
     - 1.0.3 - Removed timestamps in MANIFEST.csv and updated config_example.yaml
+    - 1.2.0 - Support additonal columns if provided in config yaml file
