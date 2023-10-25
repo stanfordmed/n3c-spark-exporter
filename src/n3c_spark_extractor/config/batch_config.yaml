@@ -268,3 +268,5 @@ condition_era: |
    to_timestamp(condition_era_end_date) as condition_era_end_date,
    condition_occurrence_count
   from condition_era;
+
+
