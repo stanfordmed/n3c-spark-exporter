@@ -49,16 +49,17 @@ class spark_sql_batch:
         dataset_id = self.env_config['persist_database_schema']
         cdm_tables = self.batch_config[cdm_tables_config].strip()
         if additional_cdm_tables in self.env_config:
-          cdm_tables = f'{cdm_tables},{self.env_config[additional_cdm_tables].strip()}'
+          cdm_tables = f'{self.batch_config[cdm_tables_config].strip()},{self.env_config[additional_cdm_tables].strip()}'
         cdm_table_list = cdm_tables.split(",")
         for table in cdm_table_list:
           if table in self.batch_config:       
-            self.run_spark_sql(dataset_id, table.strip())
+            self.run_spark_sql(dataset_id, table.strip(), self.batch_config[table])
+          elif table in self.env_config:
+            self.run_spark_sql(dataset_id, table.strip(), self.env_config[table]) 
         
-  def run_spark_sql(self, dataset_id, cdm_table_name):
+  def run_spark_sql(self, dataset_id, cdm_table_name, sql):
     logging.info(f'Starting extraction of {cdm_table_name}')
     # execute the query and dump the csv parts for the cdm_table to gcs bucket
-    sql = self.batch_config[cdm_table_name]
     cdm_table = self.spark.read.format('bigquery').option('table', f'{dataset_id}.{cdm_table_name}').load()
     cdm_table.createOrReplaceTempView(cdm_table_name) 
     df = self.spark.sql(sql)

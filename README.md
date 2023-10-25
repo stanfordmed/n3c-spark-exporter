@@ -37,7 +37,7 @@ To run this extractor -
     - gcs_bucket: gcp bucket
     - prefix: extractor where the temporary files, configuration files etc go and the spark batch can get the files from
     - output_dir: local folder where the extractor can download CSV files to 
-    - additional_cdm_tables: OPTIONAL if additional_cdm_tables is not supplied, it will extract only - person,observation_period,visit_occurrence,condition_occurrence,drug_exposure,device_exposure,procedure_occurrence,measurement,observation,death,location,care_site,provider,drug_era,condition_era for any additonal cdm tables supply the remaining tables list and the sql for those tables (refer to config_example.yaml file)
+    - additional_cdm_tables: OPTIONAL if additional_cdm_tables is not supplied, it will extract only - [person,observation_period,visit_occurrence,condition_occurrence,drug_exposure,device_exposure,procedure_occurrence,measurement,observation,death,location,care_site,provider,drug_era,condition_era], for any additonal cdm tables supply the remaining tables list and the sql for those tables (refer to config_example.yaml file)
 3. Clone the repository -
     - https://github.com/stanfordmed/n3c-spark-exporter
 4. Build the module - 

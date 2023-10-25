@@ -83,12 +83,12 @@ class n3c_spark_extractor:
     self.cleanup(True)
     
     try:
-      logger.info(f'Composing {self.get_cdm_tables()}')
+      logger.info(f'Composing tables')
       # trigger pyspark batch process
       result = self.trigger_batch()
 
       # compose csvs for each table
-      cdm_tables = self.batch_config[cdm_tables_config]
+      cdm_tables = self.get_cdm_tables()
       cdm_table_list : list = cdm_tables.split(",")
       logger.info(f'Composing {cdm_table_list}')
       for table in cdm_table_list:
