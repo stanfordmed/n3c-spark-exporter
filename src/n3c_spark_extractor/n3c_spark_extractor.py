@@ -259,7 +259,7 @@ class n3c_spark_extractor:
       cdm_table = table.strip()
       cdm_table_name_upper = cdm_table.upper()
       cdm_table_name_upper = f'{cdm_table_name_upper}.csv'
-      logger.info(f'Downaloading {cdm_table_name_upper} from gcs bucket {self.gcs_bucket}') 
+      logger.info(f'Downloading {cdm_table_name_upper} from gcs bucket {self.gcs_bucket}') 
       
       storage_client = storage.Client()
       bucket = storage_client.get_bucket(self.gcs_bucket)
@@ -267,13 +267,13 @@ class n3c_spark_extractor:
       for page in bucket.list_blobs().pages:
         for blob in page:
           if blob.name.startswith(f'{self.prefix}') and cdm_table_name_upper in blob.name and data_counts_folder not in blob.name: 
-            logger.info(f'Downlaoding {blob.name}')
+            logger.info(f'Downloading {blob.name}')
             output_folder = output_dir
             if cdm_table != mainfest and cdm_table != data_counts_folder:
               output_folder = datafiles_dir
             file = f'{output_folder}/{cdm_table_name_upper}'
             content = bucket.blob(blob.name)
             content.download_to_filename(file)
-            logger.info(f'Downaloaded {output_dir}{cdm_table_name_upper}')
+            logger.info(f'Downloaded {output_dir}/{cdm_table_name_upper}')
       logger.info('Done downloading csvs...')
       
