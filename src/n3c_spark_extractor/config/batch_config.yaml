@@ -1,20 +1,20 @@
 # DO NOT CHANGE ANYTHING IN THIS FILE
 manifest: |
   select
-   '{site_abbrev}' as site_abbrev,
-   '{site_name}'  as site_name,
-   '{contact_name}' as contact_name,
-   '{contact_email}' as contact_email,
-   '{cdm_name}' as cdm_name,
-   '{cdm_version}' as cdm_version,
-   (SELECT  vocabulary_version from n3c_pre_cohort LIMIT 1) as vocabulary_version,
-   'Y' as n3c_phenotype_yn,
-   (SELECT  phenotype_version from n3c_pre_cohort LIMIT 1) as n3c_phenotype_version,
-   '{shift_date_yn}' as shift_date_yn,
-   '{max_num_shift_days}' as max_num_shift_days,
-   to_timestamp(current_date()) as run_date,
-   to_timestamp(date_add(current_date(), -{data_latency_num_days})) as update_date,	
-   to_timestamp(date_add(current_date(), {days_between_submissions})) as next_submission_date;
+   '{site_abbrev}' as SITE_ABBREV,
+   '{site_name}'  as SITE_NAME,
+   '{contact_name}' as CONTACT_NAME,
+   '{contact_email}' as CONTACT_EMAIL,
+   '{cdm_name}' as CDM_NAME,
+   '{cdm_version}' as CDM_VERSION,
+   (SELECT  vocabulary_version from n3c_pre_cohort LIMIT 1) as VOCABULARY_VERSION,
+   'Y' as N3C_PHENOTYPE_YN,
+   (SELECT  phenotype_version from n3c_pre_cohort LIMIT 1) as N3C_PHENOTYPE_VERSION,
+   '{shift_date_yn}' as SHIFT_DATE_YN,
+   '{max_num_shift_days}' as MAX_NUM_SHIFT_DAYS,
+   to_timestamp(current_date()) as RUN_DATE,
+   to_timestamp(date_add(current_date(), -{data_latency_num_days})) as UPDATE_DATE,	
+   to_timestamp(date_add(current_date(), {days_between_submissions})) as NEXT_SUBMISSION_DATE;
 
 data_count_sql: |
   select '{table_name_upper}', count(*) dup_count from {table_name};
