@@ -13,3 +13,6 @@ n3c_spark_extractor.log
 # due to using tox and pytest
 .tox
 .cache
+
+*colorado*
+config_colorado.yaml
