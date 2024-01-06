@@ -37,13 +37,13 @@ To run this extractor -
     - gcs_bucket: gcp bucket
     - prefix: extractor where the temporary files, configuration files etc go and the spark batch can get the files from
     - output_dir: local folder where the extractor can download CSV files to. NOTE: If executing on Windows host, use Windows path syntax (e.g., C:\output_dir). Do not use Linux syntax (/c/output_dir). 
-    - additional_cdm_tables: OPTIONAL if additional_cdm_tables is not supplied, it will extract only - [person,observation_period,visit_occurrence,condition_occurrence,drug_exposure,device_exposure,procedure_occurrence,measurement,observation,death,location,care_site,provider,drug_era,condition_era], for any additonal cdm tables supply the remaining tables list and the sql for those tables (refer to config_example.yaml file). Only add the table name (e.g. note_nlp) to the select clause in config.yaml file. Do not include project_id.dataset to the SQL statements there.
+    - additional_cdm_tables: OPTIONAL if additional_cdm_tables is not supplied, it will extract only - [person,observation_period,visit_occurrence,condition_occurrence,drug_exposure,device_exposure,procedure_occurrence,measurement,observation,death,location,care_site,provider,drug_era,condition_era], for any additonal cdm tables supply the remaining tables list and the sql for those tables (refer to config_example.yaml file). Only add the table name (e.g. note_nlp) to the select clause in config.yaml file. Do not include project_id.dataset to the SQL statements there. No spaces are allowed between table names in the addition_cdm_tables field.
 3. Clone the repository -
     - https://github.com/stanfordmed/n3c-spark-exporter
 4. Build the module - 
     - python -m build
 5. Install the package -
-    - pip install dist/n3c_spark_extractor-1.0.4.tar.gz 
+    -  pip install dist/n3c_spark_extractor-1.0.4.tar.gz
 6. Run -
     - n3c_spark_extractor --config config.yaml 
 7. Zip the CSVs and sftp as https://github.com/National-COVID-Cohort-Collaborative/Phenotype_Data_Acquisition/wiki/Instructions-for-Sites:-OMOP-Data-Model 
