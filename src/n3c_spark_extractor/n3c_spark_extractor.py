@@ -285,6 +285,3 @@ class n3c_spark_extractor:
               os.system(cmd)
             logger.info(f'Downloaded {output_folder}/{cdm_table_name_upper}')
     logger.info('Done downloading csvs...')
-
-
-
