@@ -40,11 +40,11 @@ class n3c_spark_extractor:
   script_file_in_bucket : str = 'scripts/spark_sql_batch.py'
   blobs_to_delete : list
   delete_merged_csvs_from_bucket : bool
-  use_os_export: bool
+  use_crc: bool
   
   def __init__(self, env_config_on_disk, script_file_on_disk, batch_config_on_disk):
     self.delete_merged_csvs_from_bucket = 1
-    self.use_os_export = 0
+    self.use_crc = 0
     with open(env_config_on_disk, "r") as f:
       self.env_config = yaml.safe_load(f)
       self.gcs_bucket = self.env_config[gs_bucket_config]
@@ -59,8 +59,8 @@ class n3c_spark_extractor:
         logger.info('No prefix supplied, using - {self.prefix}')
       if 'delete_merged_csvs_from_bucket' in self.env_config:
         self.delete_merged_csvs_from_bucket = self.env_config['delete_merged_csvs_from_bucket']
-      if 'use_os_export' in self.env_config:
-        self.use_os_export = self.env_config['use_os_export']
+      if 'use_crc' in self.env_config:
+        self.use_crc = self.env_config['use_crc']
       self.script_file = f'{self.prefix}/{self.script_file_in_bucket }'
       storage_client = storage.Client()
       bucket = storage_client.get_bucket(self.gcs_bucket)
@@ -276,12 +276,10 @@ class n3c_spark_extractor:
             if cdm_table != mainfest and cdm_table != data_counts_folder:
               output_folder = datafiles_dir
             file = f'{output_folder}/{cdm_table_name_upper}'
-            if (self.use_os_export == 0) :
-              content = bucket.blob(blob.name)
+            content = bucket.blob(blob.name)
+            if (self.use_crc == 0) :
               content.download_to_filename(file)
             else:
-              cmd = f'gsutil -q cp gs://{self.gcs_bucket}/{blob.name} {file} '
-              logger.info(f'os.system() command string: {cmd}')
-              os.system(cmd)
+              content.download_to_filename(file,checksum='crc32c')
             logger.info(f'Downloaded {output_folder}/{cdm_table_name_upper}')
     logger.info('Done downloading csvs...')
