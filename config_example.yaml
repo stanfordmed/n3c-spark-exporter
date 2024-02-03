@@ -41,6 +41,7 @@ spark_bq_jar: gs://spark-lib/bigquery/spark-bigquery-with-dependencies_2.13-0.31
 delete_merged_csvs_from_bucket: 0
 
 # if set to 0, do not use CRC validation on export. Any non-zero number, use crc validation on export. Default = 0 (no CRC validation)
+# Requires google-crc32c module installed
 use_crc: 1
 
 
