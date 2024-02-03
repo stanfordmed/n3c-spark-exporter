@@ -278,8 +278,10 @@ class n3c_spark_extractor:
             file = f'{output_folder}/{cdm_table_name_upper}'
             content = bucket.blob(blob.name)
             if (self.use_crc == 0) :
+              logger.info(f'Not using CRC')
               content.download_to_filename(file)
             else:
+              logger.info(f'Using CRC')
               content.download_to_filename(file,checksum='crc32c')
             logger.info(f'Downloaded {output_folder}/{cdm_table_name_upper}')
     logger.info('Done downloading csvs...')

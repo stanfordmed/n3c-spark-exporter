@@ -40,6 +40,10 @@ spark_bq_jar: gs://spark-lib/bigquery/spark-bigquery-with-dependencies_2.13-0.31
 # if set to 0, it will leave the merged csv files for CDM tables in GCS, default is 1 i.e. csv files will be deleted
 delete_merged_csvs_from_bucket: 0
 
+# if set to 0, do not use CRC validation on export. Any non-zero number, use crc validation on export. Default = 0 (no CRC validation)
+use_crc: 1
+
+
 additional_cdm_tables: note,note_nlp,visit_detail
 
 note: |
